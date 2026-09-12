@@ -1,1 +1,32 @@
-spring.application.name=stt
+# Default configuration. Applies to local runs and to TITAN.
+# Environment-specific differences are handled by profiles and environment
+# variables.
+
+spring:
+  application:
+    name: stt-web
+
+  # Uploaded audio arrives as multipart/form-data. The framework default of
+  # 1MB is far too small for even a short recording.
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 26MB
+
+  # On shutdown, allow in-flight work to finish before the context closes.
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+server:
+  port: 8080
+
+  # Stop accepting new connections but drain in-flight requests. The shutdown
+  # endpoint in the specification promises exactly this behaviour.
+  shutdown: graceful
+
+  tomcat:
+    max-connections: 10000
+
+logging:
+  level:
+    au.edu.adelaide.stt: INFO
