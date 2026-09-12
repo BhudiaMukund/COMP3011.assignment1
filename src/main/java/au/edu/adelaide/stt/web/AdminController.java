@@ -26,6 +26,7 @@ public class AdminController {
 
     @GetMapping("/uptime")
     public ResponseEntity<UptimeResponse> getServerUptime() {
-        return ResponseEntity.ok(uptimeService.currentUptime());
+    	throw new RuntimeException("boom");
+        /*return ResponseEntity.ok(uptimeService.currentUptime());*/
     }
 }
