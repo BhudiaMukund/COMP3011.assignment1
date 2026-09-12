@@ -6,8 +6,8 @@
 # access. Activated with --spring.profiles.active=stub.
 
 stt:
-  stub:
-    delay: 300ms                              # simulated upstream latency
-    text: "This is a stub transcription."
-    input-tokens: 100
-    output-tokens: 10
+    stub:
+        delay: 300ms # simulated upstream latency
+        text: "This is a stub transcription."
+        input-tokens: 100
+        output-tokens: 10
