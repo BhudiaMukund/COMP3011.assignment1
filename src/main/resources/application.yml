@@ -30,3 +30,12 @@ server:
 logging:
   level:
     au.edu.adelaide.stt: INFO
+
+# Settings for the external speech-to-text service, bound into OpenAiProperties.
+openai:
+  base-url: https://api.openai.com
+  transcriptions-path: /v1/audio/transcriptions
+  model: gpt-4o-mini-transcribe
+  api-key: ${OPENAI_API_KEY:}
+  connect-timeout: 5s
+  read-timeout: 30s
