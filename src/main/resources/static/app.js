@@ -120,13 +120,6 @@ function stopMicrophone() {
     stream = null;
   }
 }
-button.addEventListener("click", () => {
-  if (state === "idle") {
-    start();
-  } else if (state === "recording") {
-    recorder.stop();
-  }
-});
 
 async function startRecording() {
   const problem = checkSupported();
@@ -210,7 +203,7 @@ async function recordingStopped() {
   await upload(blob, format);
 }
 
-async function upload(blob) {
+async function upload(blob, format) {
   const form = new FormData();
   form.append("audio", blob, "recording." + fileExtension(format));
 
