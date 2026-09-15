@@ -1,4 +1,5 @@
 const ENDPOINT = "/api/v1/transcribe";
+const UPLOAD_TIMEOUT_MS = 30000;
 
 const button = document.getElementById("recordButton");
 const status = document.getElementById("status");
@@ -13,7 +14,7 @@ let timer = null;
 let startTime = 0;
 
 // All UI updates
-function setState(newState, message) {
+function setState(newState, message, isError) {
   state = newState;
 
   if (state === "recording") {
@@ -31,6 +32,39 @@ function setState(newState, message) {
   }
 
   status.textContent = message;
+
+  if (isError === true) {
+    status.className = "status error";
+  } else {
+    status.className = "status";
+  }
+}
+
+// Check for mic related errors.
+function checkSupported() {
+  if (!window.isSecureContext) {
+    return "The microphone needs a secure connection. Open this page over https or on localhost.";
+  }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    return "This browser does not support recording from the microphone.";
+  }
+  if (typeof MediaRecorder === "undefined") {
+    return "This browser does not support audio recording.";
+  }
+  return null;
+}
+
+function microphoneError(e) {
+  if (e.name === "NotAllowedError" || e.name === "SecurityError") {
+    return "Microphone access blocked. Allow it in your browser's settings and try again.";
+  }
+  if (e.name === "NotFoundError") {
+    return "No microphone found. Plug mic and try again.";
+  }
+  if (e.name === "NotReadableError") {
+    return "The mic is being used by another app. Close it and try again.";
+  }
+  return "The microphone could not be started. Try again.";
 }
 
 // Recording timer
@@ -67,10 +101,15 @@ button.addEventListener("click", () => {
 });
 
 async function startRecording() {
+  const problem = checkSupported();
+  if (problem !== null) {
+    setState("idle", problem, true);
+    return;
+  }
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch (e) {
-    setState("idle", "Microphone error: " + e.name);
+    setState("idle", microphoneError(e), true);
     return;
   }
 
@@ -81,6 +120,12 @@ async function startRecording() {
     if (e.data.size > 0) {
       chunks.push(e.data);
     }
+  };
+
+  recorder.onerror = function () {
+    stopMicrophone();
+    stopTimer();
+    setState("idle", "Recording stopped unexpectedly. Try again.", true);
   };
 
   recorder.onstop = recordingStopped;
@@ -101,6 +146,10 @@ async function recordingStopped() {
   stopMicrophone();
 
   const blob = new Blob(chunks, { type: recorder.mimeType });
+  if (blob.size === 0) {
+    setState("idle", "Nothing was recorded. Try again.", true);
+    return;
+  }
   chunks = [];
 
   setState("uploading", "Transcribing your recording.");
@@ -111,19 +160,56 @@ async function upload(blob) {
   const form = new FormData();
   form.append("audio", blob, "recording.webm");
 
-  try {
-    const res = await fetch(ENDPOINT, { method: "POST", body: form });
-    const body = await res.json();
+  // Avoid infinite transcribe.
+  const controller = new AbortController();
+  const timeout = setTimeout(function () {
+    controller.abort();
+  }, UPLOAD_TIMEOUT_MS);
 
-    if (res.ok) {
-      transcript.textContent = body.text;
-      setState("idle", "Complete. Ready for another recording.");
-    } else {
-      setState("idle", "Error: " + body.message);
+  try {
+    const res = await fetch(ENDPOINT, {
+      method: "POST",
+      body: form,
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      let message = "The server could not transcribe that recording.";
+      try {
+        const body = await res.json();
+        if (body.message) {
+          message = body.message;
+        }
+      } catch (e) {
+      }
+      setState("idle", message, true);
+      return;
     }
+
+    const body = await res.json();
+    if (body.text && body.text.trim() !== "") {
+      transcript.textContent = body.text;
+    } else {
+      transcript.textContent = "No speech was detected in that recording.";
+    }
+    setState("idle", "Done. Ready for another recording.");
   } catch (e) {
-    setState("idle", "Network error: " + e.message);
+    if (e.name === "AbortError") {
+      setState(
+        "idle",
+        "That took too long and was cancelled. Try a shorter recording.",
+        true,
+      );
+    } else {
+      setState(
+        "idle",
+        "Could not reach the server. Check your connection and try again.",
+        true,
+      );
+    }
   }
+
+  clearTimeout(timeout);
 }
 
 button.addEventListener("click", function () {
@@ -134,4 +220,10 @@ button.addEventListener("click", function () {
   }
 });
 
-setState("idle", "Ready.");
+const startupProblem = checkSupported();
+if (startupProblem === null) {
+  setState("idle", "Ready.");
+} else {
+  setState("idle", startupProblem, true);
+  button.disabled = true;
+}

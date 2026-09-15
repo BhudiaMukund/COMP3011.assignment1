@@ -134,3 +134,7 @@ p.intro {
 	opacity: .5;
 	cursor: progress;
 }
+.status.error {
+	color: var(--signal);
+	font-weight: 600;
+}
