@@ -9,7 +9,55 @@ let state = "idle";
 let recorder = null;
 let stream = null;
 let chunks = [];
+let timer = null;
+let startTime = 0;
 
+// All UI updates
+function setState(newState, message) {
+  state = newState;
+
+  if (state === "recording") {
+    label.textContent = "Stop recording";
+    button.setAttribute("aria-pressed", "true");
+    button.disabled = false;
+  } else if (state === "uploading") {
+    label.textContent = "Transcribing";
+    button.setAttribute("aria-pressed", "false");
+    button.disabled = true;
+  } else {
+    label.textContent = "Start recording";
+    button.setAttribute("aria-pressed", "false");
+    button.disabled = false;
+  }
+
+  status.textContent = message;
+}
+
+// Recording timer
+function startTimer() {
+  startTime = Date.now();
+  timer = setInterval(function () {
+    const seconds = Math.floor((Date.now() - startTime) / 1000);
+    status.textContent = "Recording. " + seconds + "s";
+  }, 1000);
+}
+
+function stopTimer() {
+  if (timer !== null) {
+    clearInterval(timer);
+    timer = null;
+  }
+}
+
+function stopMicrophone() {
+  if (stream !== null) {
+    const tracks = stream.getTracks();
+    for (let i = 0; i < tracks.length; i++) {
+      tracks[i].stop();
+    }
+    stream = null;
+  }
+}
 button.addEventListener("click", () => {
   if (state === "idle") {
     start();
@@ -18,54 +66,72 @@ button.addEventListener("click", () => {
   }
 });
 
-async function start() {
+async function startRecording() {
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch (e) {
-    status.textContent = "Microphone error: " + e.name;
+    setState("idle", "Microphone error: " + e.name);
     return;
   }
 
   chunks = [];
   recorder = new MediaRecorder(stream);
-  recorder.ondataavailable = (e) => {
-    if (e.data.size > 0) chunks.push(e.data);
+
+  recorder.ondataavailable = function (e) {
+    if (e.data.size > 0) {
+      chunks.push(e.data);
+    }
   };
-  recorder.onstop = upload;
+
+  recorder.onstop = recordingStopped;
   recorder.start();
 
-  state = "recording";
-  button.setAttribute("aria-pressed", "true");
-  label.textContent = "Stop recording";
-  status.textContent = "Recording. Speak now.";
+  startTimer();
+  setState("recording", "Recording. Speak now.");
 }
 
-async function upload() {
-  stream.getTracks().forEach((t) => t.stop());
+function stopRecording() {
+  if (recorder !== null && recorder.state !== "inactive") {
+    recorder.stop();
+  }
+  stopTimer();
+}
 
-  state = "uploading";
-  button.setAttribute("aria-pressed", "false");
-  label.textContent = "Transcribing";
-  button.disabled = true;
+async function recordingStopped() {
+  stopMicrophone();
 
   const blob = new Blob(chunks, { type: recorder.mimeType });
+  chunks = [];
+
+  setState("uploading", "Transcribing your recording.");
+  await upload(blob);
+}
+
+async function upload(blob) {
   const form = new FormData();
   form.append("audio", blob, "recording.webm");
 
   try {
     const res = await fetch(ENDPOINT, { method: "POST", body: form });
     const body = await res.json();
+
     if (res.ok) {
-      transcript.textContent = body.text || "(empty)";
-      status.textContent = "Done. Ready for another recording.";
+      transcript.textContent = body.text;
+      setState("idle", "Complete. Ready for another recording.");
     } else {
-      status.textContent = "Error: " + (body.message || res.status);
+      setState("idle", "Error: " + body.message);
     }
   } catch (e) {
-    status.textContent = "Network error: " + e.message;
+    setState("idle", "Network error: " + e.message);
   }
-
-  state = "idle";
-  label.textContent = "Start recording";
-  button.disabled = false;
 }
+
+button.addEventListener("click", function () {
+  if (state === "idle") {
+    startRecording();
+  } else if (state === "recording") {
+    stopRecording();
+  }
+});
+
+setState("idle", "Ready.");

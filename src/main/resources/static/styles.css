@@ -40,7 +40,8 @@ body {
 
 h1 {
   margin: 0 0 0.25rem;
-  font-size: 1.5rem;
+  font-size: 1.8rem;
+  font-family: "Bricolage Grotesque", sans-serif;
 }
 h2 {
   margin: 0 0 0.5rem;
@@ -127,4 +128,9 @@ p.intro {
 
 .transcript__text {
   display: block;
+}
+
+.record[disabled] {
+	opacity: .5;
+	cursor: progress;
 }
