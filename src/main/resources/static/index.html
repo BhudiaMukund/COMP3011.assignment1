@@ -5,16 +5,23 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Speech to text</title>
+	<link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
-	<h1>Speech to text</h1>
-	<button id="recordButton" type="button">Start recording</button>
+	<main class="panel">
+		<h1>Speech to text</h1>
+		<p class="intro">Record a short message and it will be transcribed for you.</p>
 
-	<p id="status">Ready.</p>
+		<button id="recordButton" class="record" type="button">Start recording</button>
 
-	<h2>Transcript</h2>
-	<p id="transcript">Nothing recorded yet.</p>
+		<p id="status" class="status">Ready.</p>
+
+		<section class="transcript">
+			<h2>Transcript</h2>
+			<p id="transcript" class="transcript__text">Nothing recorded yet.</p>
+		</section>
+	</main>
 
 	<script src="app.js"></script>
 </body>

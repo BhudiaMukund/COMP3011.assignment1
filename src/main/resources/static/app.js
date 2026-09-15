@@ -10,8 +10,12 @@ let stream = null;
 let chunks = [];
 
 button.addEventListener("click", () => {
-    if (state === "idle") start();
-    else if (state === "recording") recorder.stop();
+    if (state === "idle") {
+        start();
+    }
+    else if (state === "recording") {
+        recorder.stop()
+    };
 });
 
 async function start() {
