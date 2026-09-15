@@ -1,5 +1,6 @@
 const ENDPOINT = "/api/v1/transcribe";
 const UPLOAD_TIMEOUT_MS = 30000;
+const AUDIO_BITRATE = 24000;
 
 const button = document.getElementById("recordButton");
 const status = document.getElementById("status");
@@ -12,6 +13,33 @@ let stream = null;
 let chunks = [];
 let timer = null;
 let startTime = 0;
+
+// Not all browsers support all format, try in order.
+// Opus in webm is smallest in size
+function pickFormat() {
+  const formats = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/ogg;codecs=opus",
+    "audio/mp4",
+  ];
+  for (let i = 0; i < formats.length; i++) {
+    if (MediaRecorder.isTypeSupported(formats[i])) {
+      return formats[i];
+    }
+  }
+  return "";
+}
+
+function fileExtension(format) {
+  if (format.indexOf("ogg") !== -1) {
+    return "ogg";
+  }
+  if (format.indexOf("mp4") !== -1) {
+    return "mp4";
+  }
+  return "webm";
+}
 
 // All UI updates
 function setState(newState, message, isError) {
@@ -107,14 +135,36 @@ async function startRecording() {
     return;
   }
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        channelCount: 1, // stereo not required, so saves size.
+        echoCancellation: true,
+        noiseSuppression: true,
+      },
+    });
   } catch (e) {
     setState("idle", microphoneError(e), true);
     return;
   }
 
   chunks = [];
-  recorder = new MediaRecorder(stream);
+  const format = pickFormat();
+  const options = { audioBitsPerSecond: AUDIO_BITRATE };
+  if (format !== "") {
+    options.mimeType = format;
+  }
+
+  try {
+    recorder = new MediaRecorder(stream, options);
+  } catch (e) {
+    stopMicrophone();
+    setState(
+      "idle",
+      "This browser does not accept the recording format.",
+      true,
+    );
+    return;
+  }
 
   recorder.ondataavailable = function (e) {
     if (e.data.size > 0) {
@@ -129,7 +179,9 @@ async function startRecording() {
   };
 
   recorder.onstop = recordingStopped;
-  recorder.start();
+
+  //   Save chunk every second instead of one huge at the end
+  recorder.start(1000);
 
   startTimer();
   setState("recording", "Recording. Speak now.");
@@ -144,21 +196,23 @@ function stopRecording() {
 
 async function recordingStopped() {
   stopMicrophone();
+  const format = recorder.mimeType;
 
-  const blob = new Blob(chunks, { type: recorder.mimeType });
+  const blob = new Blob(chunks, { type: format });
+  chunks = [];
+
   if (blob.size === 0) {
     setState("idle", "Nothing was recorded. Try again.", true);
     return;
   }
-  chunks = [];
 
   setState("uploading", "Transcribing your recording.");
-  await upload(blob);
+  await upload(blob, format);
 }
 
 async function upload(blob) {
   const form = new FormData();
-  form.append("audio", blob, "recording.webm");
+  form.append("audio", blob, "recording." + fileExtension(format));
 
   // Avoid infinite transcribe.
   const controller = new AbortController();
@@ -180,8 +234,7 @@ async function upload(blob) {
         if (body.message) {
           message = body.message;
         }
-      } catch (e) {
-      }
+      } catch (e) {}
       setState("idle", message, true);
       return;
     }
