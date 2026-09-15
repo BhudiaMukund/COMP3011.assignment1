@@ -85,3 +85,46 @@ p.intro {
   min-height: 4.5rem;
   white-space: pre-wrap;
 }
+
+.record:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
+.record {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.record__dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.record[aria-pressed="true"] {
+  background: var(--signal);
+  border-color: var(--signal);
+}
+
+.record[aria-pressed="true"] .record__dot {
+  animation: pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .record[aria-pressed="true"] .record__dot {
+    animation: none;
+  }
+}
+
+.transcript__text {
+  display: block;
+}

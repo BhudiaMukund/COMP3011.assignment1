@@ -1,29 +1,39 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Speech to text</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
 
-<head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>Speech to text</title>
-	<link rel="stylesheet" href="styles.css">
-</head>
+  <body>
+    <main class="panel">
+      <h1>Speech to text</h1>
+      <p class="intro">
+        Record a short message and it will be transcribed for you.
+      </p>
 
-<body>
-	<main class="panel">
-		<h1>Speech to text</h1>
-		<p class="intro">Record a short message and it will be transcribed for you.</p>
+      <button
+        id="recordButton"
+        class="record"
+        type="button"
+        aria-pressed="false"
+      >
+        <span class="record__dot" aria-hidden="true"></span>
+        <span id="recordLabel">Start recording</span>
+      </button>
 
-		<button id="recordButton" class="record" type="button">Start recording</button>
+      <p id="status" class="status" role="status" aria-live="polite">Ready.</p>
 
-		<p id="status" class="status">Ready.</p>
+      <section class="transcript" aria-labelledby="transcriptHeading">
+        <h2 id="transcriptHeading">Transcript</h2>
+        <output id="transcript" class="transcript__text" aria-live="polite">
+          Nothing recorded yet.
+        </output>
+      </section>
+    </main>
 
-		<section class="transcript">
-			<h2>Transcript</h2>
-			<p id="transcript" class="transcript__text">Nothing recorded yet.</p>
-		</section>
-	</main>
-
-	<script src="app.js"></script>
-</body>
-
+    <script src="app.js"></script>
+  </body>
 </html>
